@@ -66,3 +66,8 @@ workflows:
                 #!/bin/bash
                 node BBai-android.js prod release
       - deploy-to-bitrise-io@2: {}
+
+meta:
+  bitrise.io:
+    stack: osx-xcode-16.4.x  # macOS stack with latest Xcode
+    machine_type_id: g2.mac.large  # Performance machine type

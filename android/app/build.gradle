@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle" // Loads .env files via react-native-config
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -69,11 +70,11 @@ def jscFlavor = 'org.webkit:android-jsc:+'
 android {
     namespace = "com.coreflex.sfapp"
 
-    compileSdk rootProject.ext.compileSdk
+    compileSdkVersion rootProject.ext.compileSdkVersion
 
     namespace "com.coreflex.sfapp"
     defaultConfig {
-        applicationId "com.coreflex.sfapp"
+        applicationId "com.coreflex.sfapp"  
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -83,6 +84,48 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
+    flavorDimensions "env" // Define a dimension for flavors. Used to differentiate environments (dev, uat, prod)
+
+    // Link flavors to .env files
+    project.ext.envConfigFiles = [
+        dev : ".env.dev",
+        uat : ".env.uat",
+        prod: ".env.prod"
+    ]
+
+    // Define product flavors
+    productFlavors {
+            dev {
+                dimension "env" // Belongs to "env" dimension
+                applicationIdSuffix ".dev" // App ID becomes com.reactreduxtoolkit.dev
+                resValue "string", "app_name", "RedOneDev" // Injects app_name as RedOneDev
+            }
+            uat {
+                dimension "env"
+                applicationIdSuffix ".uat"
+                resValue "string", "app_name", "RedOneUAT"
+            }
+            prod {
+                dimension "env"
+                resValue "string", "app_name", "RedOne"
+            }
+        }
+
+        packagingOptions {
+            pickFirst '**/*.so'
+        }
+
+        // Customize APK output file name based on flavor + buildType
+        applicationVariants.all { variant ->
+            variant.outputs.all { output ->
+                def flavor = variant.flavorName
+                def buildType = variant.buildType.name
+                def newApkName = "redone-${flavor}-${buildType}.apk"
+                outputFileName = newApkName
+            }
+        }
+
 
     buildTypes {
         release {

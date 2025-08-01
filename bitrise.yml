@@ -7,9 +7,6 @@ workflows:
   dev:
     steps:
       - git-clone@8: {}
-      - npm@1:
-          inputs:
-            - command: install
       - script@1:
           title: Run installandroid.js
           inputs:
@@ -27,9 +24,6 @@ workflows:
   uat:
     steps:
       - git-clone@8: {}
-      - npm@1:
-          inputs:
-            - command: install
       - script@1:
           title: Run installandroid.js
           inputs:
@@ -47,9 +41,6 @@ workflows:
   prod:
     steps:
       - git-clone@8: {}
-      - npm@1:
-          inputs:
-            - command: install
       - script@1:
           title: Run installandroid.js
           inputs:

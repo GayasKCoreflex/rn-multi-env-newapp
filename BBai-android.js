@@ -28,11 +28,11 @@ const path = require('path');
 const dotenv = require('dotenv');
 const os = require('os');
 
-// Supported envs and build types
+// Supported environments and build types
 const validEnvs = ['dev', 'uat', 'prod'];
 const validBuildTypes = ['release', 'debug'];
 
-// Parse args
+// Parse CLI arguments
 const args = process.argv.slice(2);
 if (args.length < 1 || args.length > 2) {
   console.error('❌ Usage: node BBai-android.js <environment> [buildType]');
@@ -53,7 +53,7 @@ if (!validBuildTypes.includes(buildType)) {
 
 console.log(`✅ Building for environment: ${env}, type: ${buildType}`);
 
-// Load .env file
+// Load environment variables
 const envFile = path.resolve(__dirname, `.env.${env}`);
 if (!shell.test('-f', envFile)) {
   console.error(`❌ Missing env file: ${envFile}`);
@@ -97,8 +97,8 @@ if (shell.exec(`${gradleCmd} ${assembleTask}`).code !== 0) {
   process.exit(1);
 }
 
-// Determine APK path
-const apkRelative = `app/build/outputs/apk/${env}/${buildType}/redone-${env}-${buildType}.apk`;
+// Determine APK path (AGP naming: app-<flavor>-<buildType>.apk)
+const apkRelative = `app/build/outputs/apk/${env}/${buildType}/app-${env}-${buildType}.apk`;
 const apkPath = path.join('android', apkRelative);
 if (!shell.test('-f', apkPath)) {
   console.error(`❌ APK not found at ${apkPath}`);

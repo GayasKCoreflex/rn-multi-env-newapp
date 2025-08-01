@@ -1,5 +1,5 @@
 /**
- * BBai - Bundle-Build-Assemble-Install Script (All-in-one)
+ * BBai - Bundle-Build-Assemble Script (Bitrise Artifact)
  *
  * Usage:
  *    node BBai-android.js <environment> [buildType]
@@ -16,9 +16,11 @@
  * - release (default)
  * - debug
  *
- * Requirements:
- * - Android device must be connected
- * - Install dependencies: npm install shelljs dotenv env-cmd
+ * Behavior:
+ * - Bundles JS
+ * - Builds APK via Gradle
+ * - Copies APK to $BITRISE_DEPLOY_DIR if present
+ * - Does NOT install APK
  */
 
 const shell = require('shelljs');
@@ -26,104 +28,95 @@ const path = require('path');
 const dotenv = require('dotenv');
 const os = require('os');
 
-// Valid environments and build types
+// Supported envs and build types
 const validEnvs = ['dev', 'uat', 'prod'];
 const validBuildTypes = ['release', 'debug'];
 
-// Extract CLI arguments
+// Parse args
 const args = process.argv.slice(2);
-
-// Validate number of arguments
 if (args.length < 1 || args.length > 2) {
-    console.error('❌ Usage: node BBai-android.js <environment> [buildType]');
-    process.exit(1);
+  console.error('❌ Usage: node BBai-android.js <environment> [buildType]');
+  process.exit(1);
 }
-
 const env = args[0];
 const buildType = (args[1] || 'release').toLowerCase();
 
-// Validate environment
+// Validate inputs
 if (!validEnvs.includes(env)) {
-    console.error(`❌ Invalid environment: "${env}". Must be one of: ${validEnvs.join(', ')}`);
-    process.exit(1);
+  console.error(`❌ Invalid environment: ${env}. Must be one of: ${validEnvs.join(', ')}`);
+  process.exit(1);
 }
-
-// Validate build type
 if (!validBuildTypes.includes(buildType)) {
-    console.error(`❌ Invalid buildType: "${buildType}". Must be one of: ${validBuildTypes.join(', ')}`);
-    process.exit(1);
+  console.error(`❌ Invalid build type: ${buildType}. Must be one of: ${validBuildTypes.join(', ')}`);
+  process.exit(1);
 }
 
-// Display selected options
-console.log(`✅ Environment selected: ${env}`);
-console.log(`🔨 Build type selected: ${buildType}`);
+console.log(`✅ Building for environment: ${env}, type: ${buildType}`);
 
-// Load corresponding .env file
-const envFilePath = path.resolve(__dirname, `.env.${env}`);
-if (!shell.test('-f', envFilePath)) {
-    console.error(`❌ Environment file not found: ${envFilePath}`);
-    process.exit(1);
+// Load .env file
+const envFile = path.resolve(__dirname, `.env.${env}`);
+if (!shell.test('-f', envFile)) {
+  console.error(`❌ Missing env file: ${envFile}`);
+  process.exit(1);
 }
-dotenv.config({ path: envFilePath });
+dotenv.config({ path: envFile });
 console.log(`📦 Loaded env file: .env.${env}`);
 
-// Clean old bundle and build
-shell.echo('🧹 Cleaning previous build and bundle...');
+// Clean previous outputs
+shell.echo('🧹 Cleaning previous builds...');
 shell.rm('-rf', `android/app/src/${env}/assets/index.android.bundle`);
 shell.rm('-rf', 'android/app/build');
 
-// Ensure assets and res directories exist
+// Ensure asset directories
 shell.mkdir('-p', `android/app/src/${env}/assets`);
 shell.mkdir('-p', `android/app/src/${env}/res`);
 
-// Bundle JS for the selected environment and build type
+// Bundle JS
 console.log('📦 Bundling JavaScript...');
-const isDevBundle = buildType === 'debug';
+const isDev = buildType === 'debug';
 const bundleCmd = `npx env-cmd -f .env.${env} react-native bundle \
   --platform android \
-  --dev ${isDevBundle} \
+  --dev ${isDev} \
   --entry-file index.js \
   --bundle-output android/app/src/${env}/assets/index.android.bundle \
   --assets-dest android/app/src/${env}/res`;
-
 if (shell.exec(bundleCmd).code !== 0) {
-    console.error('❌ JS bundling failed.');
-    shell.exit(1);
+  console.error('❌ JS bundling failed');
+  process.exit(1);
 }
 
-// Move to android folder to start Gradle build
-console.log(`🏗️  Building ${buildType} APK...`);
-shell.cd('android');
-
-// Construct Gradle task name (e.g., assembleDevDebug)
-const flavorCap = env.charAt(0).toUpperCase() + env.slice(1);
-const buildTypeCap = buildType.charAt(0).toUpperCase() + buildType.slice(1);
-const gradleTask = `assemble${flavorCap}${buildTypeCap}`;
-
-// Use appropriate gradle wrapper based on OS
+// Build via Gradle
+console.log(`🏗️  Running Gradle assemble for ${env}/${buildType}...`);
 const gradleCmd = os.platform() === 'win32' ? 'gradlew.bat' : './gradlew';
-
-// Run Gradle build
-if (shell.exec(`${gradleCmd} ${gradleTask}`).code !== 0) {
-    console.error('❌ Build failed.');
-    shell.exit(1);
+const flavor = env.charAt(0).toUpperCase() + env.slice(1);
+const typeCap = buildType.charAt(0).toUpperCase() + buildType.slice(1);
+const assembleTask = `assemble${flavor}${typeCap}`;
+shell.cd('android');
+if (shell.exec(`${gradleCmd} ${assembleTask}`).code !== 0) {
+  console.error('❌ Gradle build failed');
+  process.exit(1);
 }
 
-// Install APK to connected Android device
-console.log('📲 Installing APK on device...');
-const apkPath = `app/build/outputs/apk/${env}/${buildType}/redone-${env}-${buildType}.apk`;
-
-// Validate APK existence
+// Determine APK path
+const apkRelative = `app/build/outputs/apk/${env}/${buildType}/redone-${env}-${buildType}.apk`;
+const apkPath = path.join('android', apkRelative);
 if (!shell.test('-f', apkPath)) {
-    console.error(`❌ APK not found: ${apkPath}`);
-    shell.exit(1);
+  console.error(`❌ APK not found at ${apkPath}`);
+  process.exit(1);
 }
 
-// Install APK using adb
-if (shell.exec(`adb install -r ${apkPath}`).code !== 0) {
-    console.error('❌ APK installation failed.');
-    shell.exit(1);
+// Copy to Bitrise deploy dir if available
+const deployDir = process.env.BITRISE_DEPLOY_DIR;
+if (deployDir) {
+  console.log(`📤 Copying APK to Bitrise deploy dir: ${deployDir}`);
+  const target = path.join(deployDir, path.basename(apkPath));
+  if (shell.cp(apkPath, target).code !== 0) {
+    console.error('❌ Failed to copy APK to deploy dir');
+    process.exit(1);
+  }
+  console.log(`✅ APK available for download: ${target}`);
+} else {
+  console.log(`📂 APK built at: ${apkPath}`);
 }
 
-// Final success message
-console.log(`✅ ✅ ✅ Build complete and APK installed: [${env}] (${buildType})`);
+console.log('✅ ✅ ✅ Build complete');

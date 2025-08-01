@@ -1,0 +1,68 @@
+format_version: '11'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+project_type: react-native
+
+workflows:
+  dev:
+    steps:
+      - activate-ssh-key@4: {}
+      - git-clone@8: {}
+      - npm@1:
+          inputs:
+            - command: install
+      - script@1:
+          title: Run installandroid.js
+          inputs:
+            - content: |
+                #!/bin/bash
+                node ./installandroid.js
+      - script@1:
+          title: Build Dev APK
+          inputs:
+            - content: |
+                #!/bin/bash
+                node BBai-android.js dev debug
+      - deploy-to-bitrise-io@2: {}
+
+  uat:
+    steps:
+      - activate-ssh-key@4: {}
+      - git-clone@8: {}
+      - npm@1:
+          inputs:
+            - command: install
+      - script@1:
+          title: Run installandroid.js
+          inputs:
+            - content: |
+                #!/bin/bash
+                node ./installandroid.js
+      - script@1:
+          title: Build UAT APK
+          inputs:
+            - content: |
+                #!/bin/bash
+                node BBai-android.js uat release
+      - deploy-to-bitrise-io@2: {}
+
+  prod:
+    steps:
+      - activate-ssh-key@4: {}
+      - git-clone@8: {}
+      - npm@1:
+          inputs:
+            - command: install
+      - script@1:
+          title: Run installandroid.js
+          inputs:
+            - content: |
+                #!/bin/bash
+                node ./installandroid.js
+      - script@1:
+          title: Build Prod APK
+          inputs:
+            - content: |
+                #!/bin/bash
+                node BBai-android.js prod release
+      - deploy-to-bitrise-io@2: {}

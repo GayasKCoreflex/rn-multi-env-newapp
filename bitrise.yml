@@ -6,7 +6,6 @@ project_type: react-native
 workflows:
   dev:
     steps:
-      - activate-ssh-key@4: {}
       - git-clone@8: {}
       - npm@1:
           inputs:
@@ -27,7 +26,6 @@ workflows:
 
   uat:
     steps:
-      - activate-ssh-key@4: {}
       - git-clone@8: {}
       - npm@1:
           inputs:
@@ -48,7 +46,6 @@ workflows:
 
   prod:
     steps:
-      - activate-ssh-key@4: {}
       - git-clone@8: {}
       - npm@1:
           inputs:

@@ -1,13 +1,17 @@
 /**
- * BBai - Bundle-Build-Assemble Script (Fixed Version)
+ * assembleConfig.js - React Native Android Bundle-Build-Assemble Script
+ *
+ * Purpose:
+ * Automates bundling, building, and deployment (local or CI/CD) of Android builds 
+ * for different environments: `dev`, `uat`, and `prod`.
  *
  * Usage:
- *    node BBai-android.js <environment> [buildType]
+ *    node assembleConfig.js <environment> [buildType]
  *
- * Example:
- *    node BBai-android.js dev debug
- *    node BBai-android.js uat release
- *    node BBai-android.js prod
+ * Example Commands:
+ *    node assembleConfig.js dev debug       // Builds debug APK for dev
+ *    node assembleConfig.js uat release     // Builds release APK for uat
+ *    node assembleConfig.js prod            // Defaults to release build for prod
  */
 
 const shell = require('shelljs');
@@ -23,12 +27,12 @@ const validBuildTypes = ['release', 'debug'];
 // Parse CLI arguments
 const args = process.argv.slice(2);
 if (args.length < 1 || args.length > 2) {
-  console.error('❌ Usage: node BBai-android.js <environment> [buildType]');
+  console.error('❌ Usage: node assembleConfig.js <environment> [buildType]');
   process.exit(1);
 }
 
 const env = args[0];
-const buildType = (args[1] || 'release').toLowerCase();
+const buildType = (args[1] || 'release').toLowerCase(); // Defaults to 'release'
 
 // Validate inputs
 if (!validEnvs.includes(env)) {
@@ -42,25 +46,25 @@ if (!validBuildTypes.includes(buildType)) {
 
 console.log(`✅ Building for environment: ${env}, type: ${buildType}`);
 
-// Load environment variables
+// Load environment-specific .env file
 const envFile = path.resolve(__dirname, `.env.${env}`);
 if (!shell.test('-f', envFile)) {
   console.error(`❌ Missing env file: ${envFile}`);
   process.exit(1);
 }
 dotenv.config({ path: envFile });
-console.log(`📦 Loaded env file: .env.${env}`);
+console.log(`📦 Loaded environment variables from: .env.${env}`);
 
-// Clean previous builds
+// Clean previous bundle and build artifacts
 shell.echo('🧹 Cleaning previous builds...');
 shell.rm('-rf', `android/app/src/${env}/assets/index.android.bundle`);
 shell.rm('-rf', 'android/app/build');
 
-// Ensure directories exist
+// Ensure required asset/res directories exist
 shell.mkdir('-p', `android/app/src/${env}/assets`);
 shell.mkdir('-p', `android/app/src/${env}/res`);
 
-// Bundle JS
+// Bundle JavaScript using React Native CLI
 console.log('📦 Bundling JavaScript...');
 const isDev = buildType === 'debug';
 const bundleCmd = `npx env-cmd -f .env.${env} react-native bundle \
@@ -71,16 +75,16 @@ const bundleCmd = `npx env-cmd -f .env.${env} react-native bundle \
   --assets-dest android/app/src/${env}/res`;
 
 if (shell.exec(bundleCmd).code !== 0) {
-  console.error('❌ JS bundling failed');
+  console.error('❌ JavaScript bundling failed');
   process.exit(1);
 }
 
-// Build via Gradle
-console.log(`🏗️  Running Gradle assemble for ${env}/${buildType}...`);
+// Run Gradle build command
+console.log(`Running Gradle assemble task for ${env}/${buildType}...`);
 const gradleCmd = os.platform() === 'win32' ? 'gradlew.bat' : './gradlew';
-const flavor = env.charAt(0).toUpperCase() + env.slice(1);
-const typeCap = buildType.charAt(0).toUpperCase() + buildType.slice(1);
-const assembleTask = `assemble${flavor}${typeCap}`;
+const flavor = env.charAt(0).toUpperCase() + env.slice(1);           // Capitalize first letter (e.g., Dev, Uat, Prod)
+const typeCap = buildType.charAt(0).toUpperCase() + buildType.slice(1); // Capitalize buildType (e.g., Debug, Release)
+const assembleTask = `assemble${flavor}${typeCap}`;                  // e.g., assembleDevRelease
 
 shell.cd('android');
 if (shell.exec(`${gradleCmd} ${assembleTask}`).code !== 0) {
@@ -89,7 +93,7 @@ if (shell.exec(`${gradleCmd} ${assembleTask}`).code !== 0) {
 }
 shell.cd('..');
 
-// Find the APK dynamically
+// Locate the generated APK file
 console.log('🔍 Searching for generated APK...');
 const apkDir = path.join('android', 'app', 'build', 'outputs', 'apk', env, buildType);
 let apkFile = '';
@@ -108,24 +112,27 @@ if (!apkFile || !fs.existsSync(apkFile)) {
   process.exit(1);
 }
 
-// For Bitrise: Copy to deploy dir
+// Handle output: CI (Bitrise) or local install
 const deployDir = process.env.BITRISE_DEPLOY_DIR;
+
 if (deployDir) {
-  console.log(`📤 Copying APK to Bitrise deploy dir: ${deployDir}`);
+  // For CI/CD (e.g., Bitrise) - Copy APK to deploy directory
+  console.log(`📤 Copying APK to Bitrise deploy directory: ${deployDir}`);
   const target = path.join(deployDir, path.basename(apkFile));
   if (shell.cp(apkFile, target).code !== 0) {
-    console.error('❌ Failed to copy APK to deploy dir');
+    console.error('❌ Failed to copy APK to deploy directory');
     process.exit(1);
   }
-  console.log(`✅ APK available for download: ${target}`);
+  console.log(`✅ APK ready for download: ${target}`);
 } else {
-  // For local builds: Install on device
+  // For local development - Install APK on connected device via ADB
   console.log('📲 Installing APK on connected device...');
   if (shell.exec(`adb install -r ${apkFile}`).code !== 0) {
-    console.error('❌ APK installation failed. Make sure device is connected and USB debugging is enabled.');
+    console.error('❌ APK installation failed. Ensure a device is connected and USB debugging is enabled.');
     process.exit(1);
   }
 }
 
-console.log(`✅ ✅ ✅ Build complete: ${env} (${buildType})`);
+// Final success message
+console.log(`✅ ✅ ✅ Build completed: ${env} (${buildType})`);
 console.log(`📂 APK location: ${apkFile}`);

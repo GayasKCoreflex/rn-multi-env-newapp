@@ -1,26 +1,40 @@
----
+# YAML format version
 format_version: '23'
+
+# Bitrise Step Library source
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+# Define the project type for Bitrise (React Native project)
 project_type: react-native
 
+# Workflows for different environments: dev, uat, prod
 workflows:
+  # Development build workflow
   dev:
     steps:
+      # Step 1: Clone the Git repository
       - git-clone@8: {}
+
+      # Step 2: Run a custom script to install Android dependencies (likely installs required node modules)
       - script@1:
           title: Run installandroid.js
           inputs:
             - content: |
                 #!/bin/bash
                 node ./installandroid.js
+
+      # Step 3: Build the Android APK for the dev environment
       - script@1:
           title: Build Dev APK
           inputs:
             - content: |
                 #!/bin/bash
                 node assembleConfig.js dev release
+
+      # Step 4: Deploy the generated APK to Bitrise (Artifacts tab and install page)
       - deploy-to-bitrise-io@2: {}
 
+  # UAT build workflow
   uat:
     steps:
       - git-clone@8: {}
@@ -38,6 +52,7 @@ workflows:
                 node assembleConfig.js uat release
       - deploy-to-bitrise-io@2: {}
 
+  # Production build workflow
   prod:
     steps:
       - git-clone@8: {}
@@ -55,7 +70,11 @@ workflows:
                 node assembleConfig.js prod release
       - deploy-to-bitrise-io@2: {}
 
+# Bitrise-specific settings
 meta:
   bitrise.io:
-    stack: osx-xcode-16.4.x  # macOS stack with latest Xcode
-    machine_type_id: g2.mac.large  # Performance machine type
+    # Define the Bitrise stack to use - macOS with latest Xcode (required for iOS builds)
+    stack: osx-xcode-16.4.x
+
+    # Set machine type for better performance (g2.mac.large = M1/M2 Mac with more resources)
+    machine_type_id: g2.mac.large

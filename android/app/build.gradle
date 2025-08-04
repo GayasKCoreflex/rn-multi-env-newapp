@@ -68,13 +68,14 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
-    namespace = "com.coreflex.sfapp"
+    // Base namespace used in the project
+    namespace = "com.coreflex.sfapp" 
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     namespace "com.coreflex.sfapp"
     defaultConfig {
-        applicationId "com.coreflex.sfapp"  
+        applicationId "com.coreflex.sfapp"  // Base app ID (will have suffix for dev/uat)
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -85,7 +86,8 @@ android {
         buildConfig = true
     }
 
-    flavorDimensions "env" // Define a dimension for flavors. Used to differentiate environments (dev, uat, prod)
+    // Defines the custom "env" dimension for separating dev, uat, and prod builds
+    flavorDimensions "env"
 
     // Link flavors to .env files
     project.ext.envConfigFiles = [
@@ -98,7 +100,7 @@ android {
     productFlavors {
             dev {
                 dimension "env" // Belongs to "env" dimension
-                applicationIdSuffix ".dev" // App ID becomes com.reactreduxtoolkit.dev
+                applicationIdSuffix ".dev" // Final ID: com.coreflex.sfapp.dev
                 resValue "string", "app_name", "RedOneDev" // Injects app_name as RedOneDev
             }
             uat {
@@ -133,9 +135,12 @@ android {
         }
         release {
             // Only use release signing if keystore properties are available
+            // If the property 'MYAPP_RELEASE_STORE_FILE' is defined (e.g., in gradle.properties or CI),
+            // then use the release keystore (for production signing)
             if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
             } else {
+                // Fallback to debug keystore for local builds when no release keystore is available
                 signingConfig signingConfigs.debug
             }
             minifyEnabled enableProguardInReleaseBuilds

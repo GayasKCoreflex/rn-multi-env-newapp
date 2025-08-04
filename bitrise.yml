@@ -18,7 +18,7 @@ workflows:
           inputs:
             - content: |
                 #!/bin/bash
-                node BBai-android.js dev release
+                node assembleConfig.js dev release
       - deploy-to-bitrise-io@2: {}
 
   uat:
@@ -35,7 +35,7 @@ workflows:
           inputs:
             - content: |
                 #!/bin/bash
-                node BBai-android.js uat release
+                node assembleConfig.js uat release
       - deploy-to-bitrise-io@2: {}
 
   prod:
@@ -52,7 +52,7 @@ workflows:
           inputs:
             - content: |
                 #!/bin/bash
-                node BBai-android.js prod release
+                node assembleConfig.js prod release
       - deploy-to-bitrise-io@2: {}
 
 meta:

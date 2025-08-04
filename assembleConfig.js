@@ -1,8 +1,13 @@
 /**
- * BBai - Bundle-Build-Assemble Script (Bitrise Artifact)
+ * BBai - Bundle-Build-Assemble Script (Fixed Version)
  *
  * Usage:
  *    node BBai-android.js <environment> [buildType]
+ *
+ * Example:
+ *    node BBai-android.js dev debug
+ *    node BBai-android.js uat release
+ *    node BBai-android.js prod
  */
 
 const shell = require('shelljs');
@@ -21,6 +26,7 @@ if (args.length < 1 || args.length > 2) {
   console.error('❌ Usage: node BBai-android.js <environment> [buildType]');
   process.exit(1);
 }
+
 const env = args[0];
 const buildType = (args[1] || 'release').toLowerCase();
 
@@ -50,6 +56,7 @@ shell.echo('🧹 Cleaning previous builds...');
 shell.rm('-rf', `android/app/src/${env}/assets/index.android.bundle`);
 shell.rm('-rf', 'android/app/build');
 
+// Ensure directories exist
 shell.mkdir('-p', `android/app/src/${env}/assets`);
 shell.mkdir('-p', `android/app/src/${env}/res`);
 
@@ -62,6 +69,7 @@ const bundleCmd = `npx env-cmd -f .env.${env} react-native bundle \
   --entry-file index.js \
   --bundle-output android/app/src/${env}/assets/index.android.bundle \
   --assets-dest android/app/src/${env}/res`;
+
 if (shell.exec(bundleCmd).code !== 0) {
   console.error('❌ JS bundling failed');
   process.exit(1);
@@ -81,7 +89,7 @@ if (shell.exec(`${gradleCmd} ${assembleTask}`).code !== 0) {
 }
 shell.cd('..');
 
-// 🔍 Find the APK dynamically
+// Find the APK dynamically
 console.log('🔍 Searching for generated APK...');
 const apkDir = path.join('android', 'app', 'build', 'outputs', 'apk', env, buildType);
 let apkFile = '';
@@ -100,7 +108,7 @@ if (!apkFile || !fs.existsSync(apkFile)) {
   process.exit(1);
 }
 
-// 📤 Copy to Bitrise deploy dir
+// For Bitrise: Copy to deploy dir
 const deployDir = process.env.BITRISE_DEPLOY_DIR;
 if (deployDir) {
   console.log(`📤 Copying APK to Bitrise deploy dir: ${deployDir}`);
@@ -111,7 +119,13 @@ if (deployDir) {
   }
   console.log(`✅ APK available for download: ${target}`);
 } else {
-  console.log(`📂 APK built at: ${apkFile}`);
+  // For local builds: Install on device
+  console.log('📲 Installing APK on connected device...');
+  if (shell.exec(`adb install -r ${apkFile}`).code !== 0) {
+    console.error('❌ APK installation failed. Make sure device is connected and USB debugging is enabled.');
+    process.exit(1);
+  }
 }
 
-console.log('✅ ✅ ✅ Build complete');
+console.log(`✅ ✅ ✅ Build complete: ${env} (${buildType})`);
+console.log(`📂 APK location: ${apkFile}`);

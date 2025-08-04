@@ -128,9 +128,15 @@ android {
 
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
-            if (signingConfigs.hasProperty("release")) {
+            // Only use release signing if keystore properties are available
+            if (project.hasProperty('MYAPP_RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
             }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

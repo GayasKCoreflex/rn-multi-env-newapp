@@ -102,12 +102,6 @@ npm install --save-dev shelljs dotenv env-cmd
 npm install react-native-config
 ```
 
-### Development Tools
-- Node.js (v18+)
-- Android Studio with SDK
-- React Native CLI
-- Java 17 (for Android builds)
-
 ## 📁 Project Structure
 
 ```
@@ -153,21 +147,5 @@ node assembleConfig.js uat release
 node assembleConfig.js prod release
 ```
 
-### Workflow Features
-- Automated dependency installation
-- Environment validation
-- Build caching for faster builds
-- Artifact deployment
-- Error handling and notifications
 
 
-
-
-
-
-
-
-
----
-
-**Note**: This project uses React Native with Salesforce Mobile SDK. Ensure you have the proper Salesforce developer credentials and configurations before building.
